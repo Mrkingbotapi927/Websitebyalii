@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Register — TeleHost</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #03070a; --s1: #060f15; --s2: #0a1820;
+  --border: #0d2535; --accent: #00e5ff; --accent2: #00ff88;
+  --accent3: #ff6b35; --text: #b8d4e0; --muted: #3a6070; --white: #e8f4f8;
+}
+body { font-family: 'JetBrains Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+.grid-bg { position: fixed; inset: 0; background-image: linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px); background-size: 32px 32px; pointer-events: none; z-index: 0; }
+.orb { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; }
+.orb1 { width: 200px; height: 200px; background: rgba(0,229,255,0.07); top: 0; right: 0; }
+.orb2 { width: 150px; height: 150px; background: rgba(0,255,136,0.06); bottom: 0; left: 0; }
+
+nav { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); background: rgba(6,15,21,0.9); }
+.logo { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 18px; color: var(--accent); letter-spacing: 2px; text-shadow: 0 0 20px rgba(0,229,255,0.5); text-decoration: none; }
+.logo span { color: var(--accent2); }
+
+.main { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; }
+
+.card {
+  width: 100%; max-width: 380px;
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  animation: fadeUp 0.5s ease-out;
+}
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.card-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  color: var(--white);
+  margin-bottom: 6px;
+}
+.card-sub { font-size: 11px; color: var(--muted); margin-bottom: 28px; }
+
+.input-group { margin-bottom: 16px; }
+.input-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; display: block; }
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  z-index: 1;
+}
+
+input {
+  width: 100%;
+  padding: 12px 12px 12px 38px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--white);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 15px rgba(0,229,255,0.1);
+}
+
+input::placeholder { color: var(--muted); }
+
+.strength-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.strength-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  transition: all 0.3s;
+  background: var(--accent3);
+}
+
+.strength-text { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+.terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 20px 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.terms input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.btn-register {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(0,255,136,0.1));
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 16px;
+}
+
+.btn-register:hover {
+  background: rgba(0,229,255,0.15);
+  box-shadow: 0 0 25px rgba(0,229,255,0.2);
+  transform: translateY(-1px);
+}
+
+.btn-register:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.divider { text-align: center; font-size: 11px; color: var(--muted); margin: 4px 0 16px; }
+
+.login-link {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.login-link a { color: var(--accent); text-decoration: none; }
+.login-link a:hover { text-decoration: underline; }
+
+.alert {
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 16px;
+  display: none;
+}
+
+.alert.error { background: rgba(255,71,87,0.1); border: 1px solid rgba(255,71,87,0.3); color: #ff4757; }
+.alert.success { background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3); color: var(--accent2); }
+
+.loading { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.plan-info {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.plan-icon { font-size: 20px; }
+.plan-details { font-size: 11px; }
+.plan-name { color: var(--accent2); font-weight: 500; margin-bottom: 2px; }
+.plan-desc { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<nav>
+  <a href="index.html" class="logo">TELE<span>HOST</span></a>
+</nav>
+
+<div class="main">
+  <div class="card">
+    <div class="card-title">Create Account</div>
+    <div class="card-sub">// Join TeleHost and host your bot for free</div>
+
+    <div class="plan-info">
+      <div class="plan-icon">🚀</div>
+      <div class="plan-details">
+        <div class="plan-name">FREE PLAN — ₹0/month</div>
+        <div class="plan-desc">500MB RAM · 24/7 Uptime · Python & Node.js</div>
+      </div>
+    </div>
+
+    <div class="alert" id="alert"></div>
+
+    <div class="input-group">
+      <label class="input-label">USERNAME</label>
+      <div class="input-wrap">
+        <span class="input-icon">👤</span>
+        <input type="text" id="username" placeholder="your_username" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label class="input-label">PASSWORD</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔒</span>
+        <input type="password" id="password" placeholder="Create a strong password" oninput="checkStrength(this.value)">
+      </div>
+      <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+      <div class="strength-text" id="strengthText">Enter password</div>
+    </div>
+
+    <div class="input-group">
+      <label class="input-label">CONFIRM PASSWORD</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔒</span>
+        <input type="password" id="confirmPassword" placeholder="Repeat your password">
+      </div>
+    </div>
+
+    <div class="terms">
+      <input type="checkbox" id="agree">
+      <label for="agree">I agree to use this platform responsibly and not host malicious bots.</label>
+    </div>
+
+    <button class="btn-register" id="registerBtn" onclick="register()">CREATE ACCOUNT →</button>
+
+    <div class="login-link">Already have an account? <a href="login.html">Login here</a></div>
+  </div>
+</div>
+
+<script>
+function checkStrength(val) {
+  const fill = document.getElementById('strengthFill');
+  const text = document.getElementById('strengthText');
+  let strength = 0;
+  if (val.length >= 6) strength++;
+  if (val.length >= 10) strength++;
+  if (/[A-Z]/.test(val)) strength++;
+  if (/[0-9]/.test(val)) strength++;
+  if (/[^A-Za-z0-9]/.test(val)) strength++;
+
+  const levels = [
+    { w: '0%', c: '#ff4757', t: 'Too short' },
+    { w: '25%', c: '#ff4757', t: 'Weak' },
+    { w: '50%', c: '#ffa502', t: 'Fair' },
+    { w: '75%', c: '#00e5ff', t: 'Good' },
+    { w: '100%', c: '#00ff88', t: 'Strong ✓' },
+  ];
+  const l = levels[Math.min(strength, 4)];
+  fill.style.width = l.w;
+  fill.style.background = l.c;
+  text.textContent = l.t;
+  text.style.color = l.c;
+}
+
+function showAlert(msg, type) {
+  const el = document.getElementById('alert');
+  el.textContent = msg;
+  el.className = `alert ${type}`;
+  el.style.display = 'block';
+}
+
+function register() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const confirm = document.getElementById('confirmPassword').value;
+  const agree = document.getElementById('agree').checked;
+  const btn = document.getElementById('registerBtn');
+
+  if (!username) return showAlert('⚠️ Username is required', 'error');
+  if (username.length < 3) return showAlert('⚠️ Username must be at least 3 characters', 'error');
+  if (password.length < 6) return showAlert('⚠️ Password must be at least 6 characters', 'error');
+  if (password !== confirm) return showAlert('⚠️ Passwords do not match', 'error');
+  if (!agree) return showAlert('⚠️ Please agree to terms', 'error');
+
+  // Check if user exists (localStorage simulation)
+  const users = JSON.parse(localStorage.getItem('telehost_users') || '[]');
+  if (users.find(u => u.username === username)) {
+    return showAlert('⚠️ Username already taken', 'error');
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading">⟳</span> CREATING ACCOUNT...';
+
+  setTimeout(() => {
+    users.push({ username, password, createdAt: Date.now(), plan: 'free', ram: 500 });
+    localStorage.setItem('telehost_users', JSON.stringify(users));
+    localStorage.setItem('telehost_session', JSON.stringify({ username, loggedIn: true }));
+
+    showAlert('✅ Account created! Redirecting...', 'success');
+    setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+  }, 1500);
+}
+</script>
+</body>
+</html>

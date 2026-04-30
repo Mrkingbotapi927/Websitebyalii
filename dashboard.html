@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Dashboard — TeleHost</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root { --bg: #03070a; --s1: #060f15; --s2: #0a1820; --border: #0d2535; --accent: #00e5ff; --accent2: #00ff88; --accent3: #ff6b35; --danger: #ff4757; --text: #b8d4e0; --muted: #3a6070; --white: #e8f4f8; }
+body { font-family: 'JetBrains Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; }
+.grid-bg { position: fixed; inset: 0; background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px); background-size: 32px 32px; pointer-events: none; z-index: 0; }
+nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); background: rgba(3,7,10,0.95); backdrop-filter: blur(10px); }
+.logo { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 16px; color: var(--accent); letter-spacing: 2px; }
+.logo span { color: var(--accent2); }
+.nav-right { display: flex; align-items: center; gap: 12px; }
+.username { font-size: 11px; color: var(--muted); }
+.username span { color: var(--accent2); }
+.logout-btn { padding: 6px 12px; border: 1px solid var(--danger); background: transparent; color: var(--danger); font-family: 'JetBrains Mono', monospace; font-size: 11px; border-radius: 4px; cursor: pointer; }
+.page { position: relative; z-index: 1; padding: 20px; max-width: 600px; margin: 0 auto; }
+.welcome h1 { font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--white); margin-bottom: 4px; }
+.welcome p { font-size: 11px; color: var(--muted); margin-bottom: 20px; }
+.ram-card { background: var(--s1); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.ram-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.ram-title { font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+.ram-val { font-family: 'Orbitron', sans-serif; font-size: 13px; color: var(--accent); }
+.ram-bar { height: 6px; background: var(--s2); border-radius: 3px; overflow: hidden; }
+.ram-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 1s ease; }
+.ram-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 6px; }
+.stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.stat { background: var(--s1); border: 1px solid var(--border); border-radius: 8px; padding: 12px 10px; text-align: center; }
+.stat-val { font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.stat-lbl { font-size: 9px; color: var(--muted); letter-spacing: 1px; }
+.section-title { font-size: 11px; color: var(--muted); letter-spacing: 2px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.no-bot { background: var(--s1); border: 1px dashed var(--border); border-radius: 10px; padding: 32px 20px; text-align: center; margin-bottom: 20px; }
+.no-bot-icon { font-size: 36px; margin-bottom: 12px; }
+.no-bot-title { font-size: 14px; color: var(--white); margin-bottom: 6px; }
+.no-bot-sub { font-size: 11px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+.btn-add { display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(0,255,136,0.1)); border: 1px solid var(--accent); color: var(--accent); font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 2px; border-radius: 6px; cursor: pointer; transition: all 0.3s; text-decoration: none; }
+.bot-card { background: var(--s1); border: 1px solid var(--accent2); border-radius: 10px; padding: 16px; margin-bottom: 16px; display: none; }
+.bot-card.active { display: block; }
+.bot-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.bot-name { font-size: 14px; color: var(--white); font-weight: 500; }
+.bot-status { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; }
+.status-dot.running { background: var(--accent2); animation: pulse 1.5s ease-in-out infinite; box-shadow: 0 0 8px var(--accent2); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.bot-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.meta-item { background: var(--s2); border-radius: 6px; padding: 8px 10px; }
+.meta-key { font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-bottom: 2px; }
+.meta-val { font-size: 12px; color: var(--text); }
+.bot-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.action-btn { padding: 10px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; cursor: pointer; transition: all 0.2s; border: 1px solid; text-align: center; background: transparent; }
+.action-btn.stop { border-color: var(--danger); color: var(--danger); }
+.action-btn.stop:hover { background: rgba(255,71,87,0.1); }
+.action-btn.restart { border-color: var(--accent3); color: var(--accent3); }
+.action-btn.restart:hover { background: rgba(255,107,53,0.1); }
+.action-btn.logs { border-color: var(--accent); color: var(--accent); }
+.action-btn.logs:hover { background: rgba(0,229,255,0.1); }
+.logs-panel { background: var(--s1); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 20px; display: none; }
+.logs-panel.show { display: block; }
+.logs-header { background: var(--s2); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+.logs-title { font-size: 12px; color: var(--accent); }
+.logs-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; }
+.logs-body { padding: 14px 16px; font-size: 11px; line-height: 2; height: 200px; overflow-y: auto; }
+.log-line { color: var(--muted); }
+.log-line.info { color: var(--accent); }
+.log-line.success { color: var(--accent2); }
+.log-line.error { color: var(--danger); }
+.log-line.warn { color: var(--accent3); }
+.quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.qa { background: var(--s1); border: 1px solid var(--border); border-radius: 8px; padding: 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+.qa:hover { border-color: var(--accent); transform: translateY(-1px); }
+.qa-icon { font-size: 18px; }
+.qa-label { font-size: 11px; color: var(--text); }
+.qa-sub { font-size: 10px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<nav>
+  <div class="logo">TELE<span>HOST</span></div>
+  <div class="nav-right">
+    <div class="username">@<span id="navUser">user</span></div>
+    <button class="logout-btn" onclick="logout()">LOGOUT</button>
+  </div>
+</nav>
+<div class="page">
+  <div class="welcome">
+    <h1>Dashboard</h1>
+    <p id="welcomeText">// Welcome back!</p>
+  </div>
+  <div class="ram-card">
+    <div class="ram-header"><div class="ram-title">RAM USAGE</div><div class="ram-val" id="ramVal">0 / 500 MB</div></div>
+    <div class="ram-bar"><div class="ram-fill" id="ramFill" style="width:0%"></div></div>
+    <div class="ram-labels"><span>0 MB</span><span>500 MB</span></div>
+  </div>
+  <div class="stats-row">
+    <div class="stat"><div class="stat-val" id="statusVal" style="color:var(--muted)">OFF</div><div class="stat-lbl">STATUS</div></div>
+    <div class="stat"><div class="stat-val" id="uptimeVal" style="color:var(--accent)">0m</div><div class="stat-lbl">UPTIME</div></div>
+    <div class="stat"><div class="stat-val" id="langVal" style="color:var(--accent3)">—</div><div class="stat-lbl">LANGUAGE</div></div>
+  </div>
+  <div class="section-title">YOUR BOT</div>
+  <div class="no-bot" id="noBotCard">
+    <div class="no-bot-icon">🤖</div>
+    <div class="no-bot-title">No Bot Running</div>
+    <div class="no-bot-sub">Upload your Python or Node.js bot script and start it with one click.</div>
+    <a href="filemanager.html" class="btn-add">📁 ADD BOT SCRIPT</a>
+  </div>
+  <div class="bot-card" id="botCard">
+    <div class="bot-card-header">
+      <div class="bot-name" id="botFileName">my_bot.py</div>
+      <div class="bot-status"><div class="status-dot running"></div><span style="color:var(--accent2)">RUNNING</span></div>
+    </div>
+    <div class="bot-meta">
+      <div class="meta-item"><div class="meta-key">LANGUAGE</div><div class="meta-val" id="botLang">Python</div></div>
+      <div class="meta-item"><div class="meta-key">RAM USED</div><div class="meta-val" id="botRam">128 MB</div></div>
+      <div class="meta-item"><div class="meta-key">STARTED</div><div class="meta-val" id="botStarted">—</div></div>
+      <div class="meta-item"><div class="meta-key">RESTARTS</div><div class="meta-val" id="botRestarts">0</div></div>
+    </div>
+    <div class="bot-actions">
+      <button class="action-btn stop" onclick="stopBot()">⏹ STOP</button>
+      <button class="action-btn restart" onclick="restartBot()">🔄 RESTART</button>
+      <button class="action-btn logs" onclick="toggleLogs()">📋 LOGS</button>
+    </div>
+  </div>
+  <div class="logs-panel" id="logsPanel">
+    <div class="logs-header"><div class="logs-title">📋 LIVE LOGS</div><button class="logs-close" onclick="toggleLogs()">✕</button></div>
+    <div class="logs-body" id="logsBody"></div>
+  </div>
+  <div class="section-title">QUICK ACTIONS</div>
+  <div class="quick-actions">
+    <a href="filemanager.html" class="qa"><div class="qa-icon">📁</div><div><div class="qa-label">File Manager</div><div class="qa-sub">Upload scripts</div></div></a>
+    <div class="qa" onclick="toggleLogs()"><div class="qa-icon">📊</div><div><div class="qa-label">Live Logs</div><div class="qa-sub">View output</div></div></div>
+  </div>
+</div>
+<script>
+const session = JSON.parse(localStorage.getItem('telehost_session') || '{}');
+if (!session.loggedIn) window.location.href = 'login.html';
+document.getElementById('navUser').textContent = session.username || 'user';
+document.getElementById('welcomeText').textContent = '// Welcome back, ' + session.username + '!';
+let botState = JSON.parse(localStorage.getItem('telehost_bot_' + session.username) || 'null');
+function updateUI() {
+  if (botState && botState.running) {
+    document.getElementById('noBotCard').style.display = 'none';
+    document.getElementById('botCard').classList.add('active');
+    document.getElementById('botFileName').textContent = botState.filename;
+    document.getElementById('botLang').textContent = botState.lang;
+    document.getElementById('botRam').textContent = botState.ram + ' MB';
+    document.getElementById('botStarted').textContent = new Date(botState.startTime).toLocaleTimeString();
+    document.getElementById('botRestarts').textContent = botState.restarts || 0;
+    document.getElementById('statusVal').textContent = 'ON';
+    document.getElementById('statusVal').style.color = 'var(--accent2)';
+    document.getElementById('langVal').textContent = botState.lang === 'Python' ? 'PY' : 'JS';
+    document.getElementById('ramVal').textContent = botState.ram + ' / 500 MB';
+    document.getElementById('ramFill').style.width = (botState.ram / 500 * 100) + '%';
+    const mins = Math.floor((Date.now() - botState.startTime) / 60000);
+    document.getElementById('uptimeVal').textContent = mins < 1 ? 'Now' : (mins > 59 ? Math.floor(mins/60)+'h' : mins+'m');
+  } else {
+    document.getElementById('noBotCard').style.display = 'block';
+    document.getElementById('botCard').classList.remove('active');
+  }
+}
+function stopBot() {
+  botState.running = false;
+  localStorage.setItem('telehost_bot_' + session.username, JSON.stringify(botState));
+  addLog('Bot stopped by user.', 'warn');
+  updateUI();
+}
+function restartBot() {
+  botState.startTime = Date.now();
+  botState.restarts = (botState.restarts || 0) + 1;
+  botState.running = true;
+  localStorage.setItem('telehost_bot_' + session.username, JSON.stringify(botState));
+  addLog('Bot restarted.', 'info');
+  updateUI();
+}
+function toggleLogs() {
+  const panel = document.getElementById('logsPanel');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show') && botState && botState.running) {
+    addLog('[INFO] Bot running: ' + botState.filename, 'info');
+    addLog('[INFO] Language: ' + botState.lang, 'info');
+    addLog('[SUCCESS] Polling for updates...', 'success');
+  }
+}
+function addLog(msg, type) {
+  const body = document.getElementById('logsBody');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + (type||'');
+  line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  body.appendChild(line);
+  body.scrollTop = body.scrollHeight;
+}
+function logout() { localStorage.removeItem('telehost_session'); window.location.href = 'login.html'; }
+updateUI();
+</script>
+</body>
+</html>
