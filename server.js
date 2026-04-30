@@ -15,23 +15,20 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'telehost_secret_key_2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'telehost_secret_2024';
 const PORT = process.env.PORT || 3000;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
-const DB_PATH = path.join(__dirname, 'telehost.db');
 
-// Create uploads dir
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// Database setup
-const db = new Database(DB_PATH);
+// Database
+const db = new Database(path.join(__dirname, 'telehost.db'));
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    created_at INTEGER DEFAULT (strftime('%s','now')),
-    ram_limit INTEGER DEFAULT 500
+    created_at INTEGER DEFAULT (strftime('%s','now'))
   );
   CREATE TABLE IF NOT EXISTS bots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,34 +41,34 @@ db.exec(`
     started_at INTEGER,
     restarts INTEGER DEFAULT 0,
     ram_used INTEGER DEFAULT 0,
-    created_at INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 `);
 
-// Store running processes in memory
-const runningBots = {}; // { botId: { process, userId, wsClients: Set } }
+const runningBots = {};
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(__dirname));
 
-// Multer setup
+// Multer - accept ALL file types
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const userDir = path.join(UPLOAD_DIR, String(req.userId));
     if (!fs.existsSync(userDir)) fs.mkdirSync(userDir, { recursive: true });
     cb(null, userDir);
   },
-  filename: (req, file, cb) => cb(null, file.originalname)
+  filename: (req, file, cb) => {
+    // Fix filename encoding
+    const name = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    cb(null, name);
+  }
 });
+
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
-  fileFilter: (req, file, cb) => {
-    if (file.originalname.endsWith('.py') || file.originalname.endsWith('.js')) cb(null, true);
-    else cb(new Error('Only .py and .js files allowed'));
-  }
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+  // NO fileFilter - accept everything
 });
 
 // Auth middleware
@@ -79,100 +76,111 @@ function auth(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token' });
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.userId = decoded.id;
-    req.username = decoded.username;
+    const d = jwt.verify(token, JWT_SECRET);
+    req.userId = d.id;
+    req.username = d.username;
     next();
   } catch {
     res.status(401).json({ error: 'Invalid token' });
   }
 }
 
-// ─── AUTH ROUTES ───────────────────────────────────────
+function getLanguage(filename) {
+  if (filename.endsWith('.py')) return 'Python';
+  if (filename.endsWith('.js')) return 'Node.js';
+  if (filename.endsWith('.sh')) return 'Shell';
+  if (filename === 'Dockerfile') return 'Docker';
+  if (filename.endsWith('.txt')) return 'Text';
+  if (filename.endsWith('.json')) return 'JSON';
+  if (filename.endsWith('.zip')) return 'ZIP';
+  return 'File';
+}
 
-// Register
+function getRunCommand(filename, dirPath) {
+  if (filename.endsWith('.py')) {
+    // Check if requirements.txt exists
+    const reqFile = path.join(dirPath, 'requirements.txt');
+    if (fs.existsSync(reqFile)) {
+      return { cmd: 'bash', args: ['-c', `pip install -r requirements.txt -q && python3 ${filename}`] };
+    }
+    return { cmd: 'python3', args: [filename] };
+  }
+  if (filename.endsWith('.js')) return { cmd: 'node', args: [filename] };
+  if (filename.endsWith('.sh')) return { cmd: 'bash', args: [filename] };
+  if (filename === 'main.py') return { cmd: 'python3', args: [filename] };
+  return { cmd: 'python3', args: [filename] };
+}
+
+// ── AUTH ROUTES ──────────────────────────────────────
+
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
-  if (username.length < 3) return res.status(400).json({ error: 'Username too short' });
-  if (password.length < 6) return res.status(400).json({ error: 'Password too short' });
-
+  if (!username || !password) return res.status(400).json({ error: 'Username aur password dono chahiye' });
+  if (username.length < 3) return res.status(400).json({ error: 'Username kam se kam 3 characters ka hona chahiye' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password kam se kam 6 characters ka hona chahiye' });
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
-  if (existing) return res.status(400).json({ error: 'Username already taken' });
-
+  if (existing) return res.status(400).json({ error: 'Yeh username already le liya gaya hai' });
   const hashed = bcrypt.hashSync(password, 10);
-  const result = db.prepare('INSERT INTO users (username, password) VALUES (?, ?)').run(username, hashed);
-  const token = jwt.sign({ id: result.lastInsertRowid, username }, JWT_SECRET, { expiresIn: '7d' });
+  const r = db.prepare('INSERT INTO users (username, password) VALUES (?, ?)').run(username, hashed);
+  const token = jwt.sign({ id: r.lastInsertRowid, username }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ success: true, token, username });
 });
 
-// Login
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Fill all fields' });
-
+  if (!username || !password) return res.status(400).json({ error: 'Sab fields baro' });
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (!user || !bcrypt.compareSync(password, user.password))
-    return res.status(401).json({ error: 'Invalid username or password' });
-
+    return res.status(401).json({ error: 'Username ya password galat hai' });
   const token = jwt.sign({ id: user.id, username }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ success: true, token, username });
 });
 
-// ─── FILE ROUTES ────────────────────────────────────────
+// ── FILE ROUTES ──────────────────────────────────────
 
-// Upload file
 app.post('/api/files/upload', auth, upload.single('script'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const lang = req.file.originalname.endsWith('.py') ? 'Python' : 'Node.js';
-  res.json({ success: true, filename: req.file.originalname, lang });
+  if (!req.file) return res.status(400).json({ error: 'File nahi mili' });
+  res.json({ success: true, filename: req.file.filename, lang: getLanguage(req.file.filename) });
 });
 
-// List files
 app.get('/api/files', auth, (req, res) => {
   const userDir = path.join(UPLOAD_DIR, String(req.userId));
   if (!fs.existsSync(userDir)) return res.json({ files: [] });
-  const files = fs.readdirSync(userDir)
-    .filter(f => f.endsWith('.py') || f.endsWith('.js'))
-    .map(f => {
-      const stat = fs.statSync(path.join(userDir, f));
-      const size = stat.size < 1024 ? stat.size + ' B' : Math.round(stat.size / 1024) + ' KB';
-      return { name: f, size, lang: f.endsWith('.py') ? 'Python' : 'Node.js', date: stat.mtime.toLocaleDateString() };
-    });
+  const files = fs.readdirSync(userDir).map(f => {
+    const stat = fs.statSync(path.join(userDir, f));
+    const size = stat.size < 1024 ? stat.size + ' B' : stat.size < 1048576 ? Math.round(stat.size / 1024) + ' KB' : (stat.size / 1048576).toFixed(1) + ' MB';
+    return { name: f, size, lang: getLanguage(f), date: stat.mtime.toLocaleDateString('en-IN') };
+  });
   res.json({ files });
 });
 
-// Delete file
 app.delete('/api/files/:filename', auth, (req, res) => {
-  const filepath = path.join(UPLOAD_DIR, String(req.userId), req.params.filename);
-  if (!fs.existsSync(filepath)) return res.status(404).json({ error: 'File not found' });
-  fs.unlinkSync(filepath);
+  const fp = path.join(UPLOAD_DIR, String(req.userId), req.params.filename);
+  if (!fs.existsSync(fp)) return res.status(404).json({ error: 'File nahi mili' });
+  fs.unlinkSync(fp);
   res.json({ success: true });
 });
 
-// ─── BOT ROUTES ─────────────────────────────────────────
+// ── BOT ROUTES ──────────────────────────────────────
 
-// Get bot status
 app.get('/api/bot', auth, (req, res) => {
   const bot = db.prepare('SELECT * FROM bots WHERE user_id = ? ORDER BY id DESC LIMIT 1').get(req.userId);
   if (!bot) return res.json({ bot: null });
-
   const isRunning = runningBots[bot.id] && bot.status === 'running';
   res.json({
     bot: {
       ...bot,
       status: isRunning ? 'running' : 'stopped',
-      uptime: isRunning && bot.started_at ? Math.floor((Date.now()/1000) - bot.started_at) : 0
+      uptime: isRunning && bot.started_at ? Math.floor(Date.now() / 1000) - bot.started_at : 0
     }
   });
 });
 
-// Run bot
 app.post('/api/bot/run', auth, (req, res) => {
   const { filename } = req.body;
-  if (!filename) return res.status(400).json({ error: 'Filename required' });
+  if (!filename) return res.status(400).json({ error: 'Filename chahiye' });
 
-  // Stop existing bot
+  // Stop any running bot
   const existingBot = db.prepare('SELECT * FROM bots WHERE user_id = ? AND status = ?').get(req.userId, 'running');
   if (existingBot && runningBots[existingBot.id]) {
     treeKill(runningBots[existingBot.id].process.pid, 'SIGKILL');
@@ -180,29 +188,27 @@ app.post('/api/bot/run', auth, (req, res) => {
     db.prepare('UPDATE bots SET status = ?, pid = NULL WHERE id = ?').run('stopped', existingBot.id);
   }
 
-  const filepath = path.join(UPLOAD_DIR, String(req.userId), filename);
-  if (!fs.existsSync(filepath)) return res.status(404).json({ error: 'File not found' });
+  const userDir = path.join(UPLOAD_DIR, String(req.userId));
+  const filepath = path.join(userDir, filename);
+  if (!fs.existsSync(filepath)) return res.status(404).json({ error: 'File nahi mili. Pehle upload karo.' });
 
-  const lang = filename.endsWith('.py') ? 'Python' : 'Node.js';
-  const cmd = filename.endsWith('.py') ? 'python3' : 'node';
+  const lang = getLanguage(filename);
+  const { cmd, args } = getRunCommand(filename, userDir);
 
-  // Create or update bot record
   let botId;
   const existing = db.prepare('SELECT id FROM bots WHERE user_id = ? AND filename = ?').get(req.userId, filename);
   if (existing) {
-    db.prepare('UPDATE bots SET status = ?, started_at = ?, pid = NULL, restarts = restarts + 1, filepath = ? WHERE id = ?')
-      .run('running', Math.floor(Date.now()/1000), filepath, existing.id);
+    db.prepare('UPDATE bots SET status=?, started_at=?, pid=NULL, restarts=restarts+1, filepath=? WHERE id=?')
+      .run('running', Math.floor(Date.now() / 1000), filepath, existing.id);
     botId = existing.id;
   } else {
-    const r = db.prepare('INSERT INTO bots (user_id, filename, filepath, language, status, started_at) VALUES (?,?,?,?,?,?)')
-      .run(req.userId, filename, filepath, lang, 'running', Math.floor(Date.now()/1000));
+    const r = db.prepare('INSERT INTO bots (user_id,filename,filepath,language,status,started_at) VALUES (?,?,?,?,?,?)')
+      .run(req.userId, filename, filepath, lang, 'running', Math.floor(Date.now() / 1000));
     botId = r.lastInsertRowid;
   }
 
-  // Spawn process
-  const proc = spawn(cmd, [filepath], { cwd: path.join(UPLOAD_DIR, String(req.userId)) });
-  db.prepare('UPDATE bots SET pid = ? WHERE id = ?').run(proc.pid, botId);
-
+  const proc = spawn(cmd, args, { cwd: userDir, shell: true });
+  db.prepare('UPDATE bots SET pid=? WHERE id=?').run(proc.pid, botId);
   runningBots[botId] = { process: proc, userId: req.userId, wsClients: new Set() };
 
   const broadcast = (msg) => {
@@ -215,104 +221,73 @@ app.post('/api/bot/run', auth, (req, res) => {
   proc.stdout.on('data', d => broadcast(d.toString()));
   proc.stderr.on('data', d => broadcast('[ERR] ' + d.toString()));
   proc.on('close', code => {
-    broadcast('[SYSTEM] Bot process exited with code ' + code);
-    db.prepare('UPDATE bots SET status = ?, pid = NULL WHERE id = ?').run('stopped', botId);
+    broadcast(`[SYSTEM] Bot process khatam hua — code: ${code}`);
+    db.prepare('UPDATE bots SET status=?, pid=NULL WHERE id=?').run('stopped', botId);
     delete runningBots[botId];
   });
 
-  // Fake RAM usage (update every 10s)
+  // RAM simulation
   const ramInterval = setInterval(() => {
     if (!runningBots[botId]) { clearInterval(ramInterval); return; }
-    const ram = Math.floor(80 + Math.random() * 100);
-    db.prepare('UPDATE bots SET ram_used = ? WHERE id = ?').run(ram, botId);
+    const ram = Math.floor(60 + Math.random() * 120);
+    db.prepare('UPDATE bots SET ram_used=? WHERE id=?').run(ram, botId);
   }, 10000);
 
   res.json({ success: true, botId, pid: proc.pid });
 });
 
-// Stop bot
 app.post('/api/bot/stop', auth, (req, res) => {
-  const bot = db.prepare('SELECT * FROM bots WHERE user_id = ? AND status = ?').get(req.userId, 'running');
-  if (!bot) return res.status(404).json({ error: 'No running bot' });
-
+  const bot = db.prepare('SELECT * FROM bots WHERE user_id=? AND status=?').get(req.userId, 'running');
+  if (!bot) return res.status(404).json({ error: 'Koi bot nahi chal raha' });
   if (runningBots[bot.id]) {
     treeKill(runningBots[bot.id].process.pid, 'SIGKILL');
     delete runningBots[bot.id];
   }
-  db.prepare('UPDATE bots SET status = ?, pid = NULL WHERE id = ?').run('stopped', bot.id);
+  db.prepare('UPDATE bots SET status=?, pid=NULL WHERE id=?').run('stopped', bot.id);
   res.json({ success: true });
 });
 
-// Restart bot
 app.post('/api/bot/restart', auth, (req, res) => {
-  const bot = db.prepare('SELECT * FROM bots WHERE user_id = ? ORDER BY id DESC LIMIT 1').get(req.userId);
-  if (!bot) return res.status(404).json({ error: 'No bot found' });
-
-  // Stop
+  const bot = db.prepare('SELECT * FROM bots WHERE user_id=? ORDER BY id DESC LIMIT 1').get(req.userId);
+  if (!bot) return res.status(404).json({ error: 'Koi bot nahi mila' });
   if (runningBots[bot.id]) {
     treeKill(runningBots[bot.id].process.pid, 'SIGKILL');
     delete runningBots[bot.id];
   }
-
-  // Restart via same run logic
-  req.body = { filename: bot.filename };
-  // Manually re-run
-  const filepath = bot.filepath;
-  if (!fs.existsSync(filepath)) return res.status(404).json({ error: 'Script file not found' });
-
-  const cmd = bot.filename.endsWith('.py') ? 'python3' : 'node';
-  db.prepare('UPDATE bots SET status = ?, started_at = ?, restarts = restarts + 1 WHERE id = ?')
-    .run('running', Math.floor(Date.now()/1000), bot.id);
-
-  const proc = spawn(cmd, [filepath], { cwd: path.dirname(filepath) });
-  db.prepare('UPDATE bots SET pid = ? WHERE id = ?').run(proc.pid, bot.id);
+  if (!fs.existsSync(bot.filepath)) return res.status(404).json({ error: 'Script file nahi mili' });
+  const userDir = path.dirname(bot.filepath);
+  const { cmd, args } = getRunCommand(bot.filename, userDir);
+  db.prepare('UPDATE bots SET status=?, started_at=?, restarts=restarts+1 WHERE id=?')
+    .run('running', Math.floor(Date.now() / 1000), bot.id);
+  const proc = spawn(cmd, args, { cwd: userDir, shell: true });
+  db.prepare('UPDATE bots SET pid=? WHERE id=?').run(proc.pid, bot.id);
   runningBots[bot.id] = { process: proc, userId: req.userId, wsClients: new Set() };
-
-  proc.stdout.on('data', d => {
-    if (runningBots[bot.id]) runningBots[bot.id].wsClients.forEach(ws => { if(ws.readyState===1) ws.send(JSON.stringify({type:'log',data:d.toString()})); });
-  });
-  proc.stderr.on('data', d => {
-    if (runningBots[bot.id]) runningBots[bot.id].wsClients.forEach(ws => { if(ws.readyState===1) ws.send(JSON.stringify({type:'log',data:'[ERR] '+d.toString()})); });
-  });
-  proc.on('close', code => {
-    db.prepare('UPDATE bots SET status = ?, pid = NULL WHERE id = ?').run('stopped', bot.id);
-    delete runningBots[bot.id];
-  });
-
+  proc.stdout.on('data', d => { if (runningBots[bot.id]) runningBots[bot.id].wsClients.forEach(ws => { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'log', data: d.toString() })); }); });
+  proc.stderr.on('data', d => { if (runningBots[bot.id]) runningBots[bot.id].wsClients.forEach(ws => { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'log', data: '[ERR] ' + d.toString() })); }); });
+  proc.on('close', code => { db.prepare('UPDATE bots SET status=?, pid=NULL WHERE id=?').run('stopped', bot.id); delete runningBots[bot.id]; });
   res.json({ success: true });
 });
 
-// ─── WEBSOCKET (Live Logs) ───────────────────────────────
+// ── WEBSOCKET ──────────────────────────────────────
 
 wss.on('connection', (ws, req) => {
   const params = new URLSearchParams(req.url.replace('/?', ''));
   const token = params.get('token');
   const botId = parseInt(params.get('botId'));
-
   let userId;
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    userId = decoded.id;
-  } catch {
-    ws.close();
-    return;
-  }
-
+  try { const d = jwt.verify(token, JWT_SECRET); userId = d.id; } catch { ws.close(); return; }
   if (runningBots[botId] && runningBots[botId].userId === userId) {
     runningBots[botId].wsClients.add(ws);
-    ws.send(JSON.stringify({ type: 'log', data: '[SYSTEM] Connected to live logs...\n' }));
+    ws.send(JSON.stringify({ type: 'log', data: '[SYSTEM] Live logs se connect ho gaya!\n' }));
   }
-
-  ws.on('close', () => {
-    if (runningBots[botId]) runningBots[botId].wsClients.delete(ws);
-  });
+  ws.on('close', () => { if (runningBots[botId]) runningBots[botId].wsClients.delete(ws); });
 });
 
-// Serve frontend for all other routes
+// Serve index for all routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  const indexPath = path.join(__dirname, 'index.html');
+  if (fs.existsSync(indexPath)) res.sendFile(indexPath);
+  else res.status(404).send('Not found');
 });
 
-server.listen(PORT, () => {
-  console.log(`TeleHost running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`TeleHost running on port ${PORT} 🚀`));

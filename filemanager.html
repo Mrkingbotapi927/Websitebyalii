@@ -4,187 +4,394 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>File Manager — TeleHost</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-:root { --bg: #03070a; --s1: #060f15; --s2: #0a1820; --border: #0d2535; --accent: #00e5ff; --accent2: #00ff88; --accent3: #ff6b35; --danger: #ff4757; --text: #b8d4e0; --muted: #3a6070; --white: #e8f4f8; }
-body { font-family: 'JetBrains Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; }
-.grid-bg { position: fixed; inset: 0; background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px); background-size: 32px 32px; pointer-events: none; z-index: 0; }
-nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); background: rgba(3,7,10,0.95); }
-.logo { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 16px; color: var(--accent); letter-spacing: 2px; text-decoration: none; }
-.logo span { color: var(--accent2); }
-.back-btn { padding: 7px 14px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; border-radius: 4px; cursor: pointer; text-decoration: none; }
-.page { position: relative; z-index: 1; padding: 20px; max-width: 600px; margin: 0 auto; padding-bottom: 120px; }
-.page-title { font-family: 'Orbitron', sans-serif; font-size: 16px; color: var(--white); margin-bottom: 4px; }
-.page-sub { font-size: 11px; color: var(--muted); margin-bottom: 24px; }
-.upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 20px; background: var(--s1); position: relative; }
-.upload-zone:hover { border-color: var(--accent); background: rgba(0,229,255,0.03); }
-.upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-.upload-icon { font-size: 40px; margin-bottom: 12px; }
-.upload-title { font-size: 14px; color: var(--white); margin-bottom: 6px; }
-.upload-sub { font-size: 11px; color: var(--muted); line-height: 1.6; }
-.upload-types { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
-.type-badge { padding: 3px 10px; border-radius: 20px; font-size: 10px; letter-spacing: 1px; }
-.type-badge.py { border: 1px solid #3776ab; color: #3776ab; }
-.type-badge.js { border: 1px solid #f7df1e; color: #f7df1e; }
-.section-title { font-size: 11px; color: var(--muted); letter-spacing: 2px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-.file-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-.file-item { background: var(--s1); border: 1px solid var(--border); border-radius: 8px; padding: 14px; display: flex; align-items: center; gap: 12px; transition: all 0.2s; cursor: pointer; }
-.file-item:hover { border-color: var(--accent); }
-.file-item.selected { border-color: var(--accent2); background: rgba(0,255,136,0.04); }
-.file-icon { font-size: 22px; flex-shrink: 0; }
-.file-info { flex: 1; min-width: 0; }
-.file-name { font-size: 13px; color: var(--white); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.file-meta { font-size: 10px; color: var(--muted); }
-.file-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; }
-.file-del:hover { color: var(--danger); }
-.file-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; }
-.file-item.selected .file-check { background: var(--accent2); border-color: var(--accent2); color: #000; }
-.empty-files { text-align: center; padding: 30px; color: var(--muted); font-size: 12px; line-height: 1.8; }
-.run-panel { position: fixed; bottom: 0; left: 0; right: 0; background: var(--s1); border-top: 1px solid var(--accent2); padding: 16px 20px; z-index: 200; transform: translateY(100%); transition: transform 0.3s ease; }
-.run-panel.show { transform: translateY(0); }
-.run-panel-inner { max-width: 600px; margin: 0 auto; }
-.selected-file { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.sel-name { font-size: 13px; color: var(--white); }
-.sel-lang { font-size: 10px; color: var(--muted); }
-.run-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
-.btn-cancel { padding: 14px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 12px; border-radius: 6px; cursor: pointer; }
-.btn-run { padding: 14px; background: linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,229,255,0.1)); border: 1px solid var(--accent2); color: var(--accent2); font-family: 'Orbitron', sans-serif; font-size: 12px; letter-spacing: 2px; border-radius: 6px; cursor: pointer; transition: all 0.3s; }
-.btn-run:hover { box-shadow: 0 0 20px rgba(0,255,136,0.3); }
-.progress-overlay { position: fixed; inset: 0; background: rgba(3,7,10,0.95); z-index: 300; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
-.progress-overlay.show { display: flex; }
-.prog-title { font-family: 'Orbitron', sans-serif; font-size: 14px; color: var(--accent); }
-.prog-bar { width: 260px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
-.prog-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; transition: width 0.5s ease; }
-.prog-steps { display: flex; flex-direction: column; gap: 8px; width: 280px; }
-.prog-item { font-size: 12px; display: flex; align-items: center; gap: 8px; color: var(--muted); }
-.prog-item.done { color: var(--accent2); }
-.prog-item.active { color: var(--accent); }
-.spinner { display: inline-block; animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#03070a;--s1:#060f15;--s2:#0a1820;--border:#0d2535;--accent:#00e5ff;--accent2:#00ff88;--accent3:#ff6b35;--danger:#ff4757;--text:#b8d4e0;--muted:#3a6070;--white:#e8f4f8}
+body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh}
+.grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
+nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);background:rgba(3,7,10,0.95)}
+.logo{font-family:'Orbitron',sans-serif;font-weight:900;font-size:16px;color:var(--accent);letter-spacing:2px;text-decoration:none}
+.logo span{color:var(--accent2)}
+.back{padding:7px 14px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;border-radius:4px;text-decoration:none}
+.page{position:relative;z-index:1;padding:20px;max-width:600px;margin:0 auto;padding-bottom:140px}
+.page-title{font-family:'Orbitron',sans-serif;font-size:16px;color:var(--white);margin-bottom:4px}
+.page-sub{font-size:11px;color:var(--muted);margin-bottom:20px}
+
+/* Upload button - big tap friendly */
+.upload-btn-wrap{margin-bottom:16px}
+.upload-btn{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  width:100%;padding:18px;
+  background:linear-gradient(135deg,rgba(0,229,255,0.1),rgba(0,255,136,0.08));
+  border:2px dashed var(--accent);
+  border-radius:12px;color:var(--accent);
+  font-family:'Orbitron',sans-serif;font-size:13px;letter-spacing:1px;
+  cursor:pointer;transition:all 0.2s;position:relative;
+}
+.upload-btn:hover,.upload-btn:active{background:rgba(0,229,255,0.15);border-color:var(--accent2)}
+.upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:0}
+.upload-btn-icon{font-size:24px}
+
+/* ZIP upload */
+.zip-btn{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  width:100%;padding:14px;
+  background:linear-gradient(135deg,rgba(255,107,53,0.1),rgba(255,107,53,0.05));
+  border:1px dashed var(--accent3);
+  border-radius:10px;color:var(--accent3);
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  cursor:pointer;transition:all 0.2s;position:relative;margin-bottom:20px;
+}
+.zip-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:0}
+.zip-btn:hover{background:rgba(255,107,53,0.15)}
+
+/* Supported files info */
+.supported{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:20px}
+.sup-title{font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px}
+.sup-tags{display:flex;flex-wrap:wrap;gap:6px}
+.sup-tag{padding:3px 8px;border-radius:4px;font-size:10px;background:var(--s2);border:1px solid var(--border);color:var(--text)}
+.sup-tag.py{border-color:#3776ab;color:#3776ab}
+.sup-tag.js{border-color:#f7df1e;color:#f7df1e}
+.sup-tag.sh{border-color:#00ff88;color:#00ff88}
+.sup-tag.txt{border-color:#888;color:#888}
+.sup-tag.any{border-color:var(--accent);color:var(--accent)}
+
+.sec-title{font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.file-list{display:flex;flex-direction:column;gap:10px}
+.file-item{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;align-items:center;gap:12px;transition:all 0.2s;cursor:pointer}
+.file-item:hover,.file-item:active{border-color:var(--accent)}
+.file-item.selected{border-color:var(--accent2);background:rgba(0,255,136,0.04)}
+.file-icon{font-size:22px;flex-shrink:0}
+.file-info{flex:1;min-width:0}
+.file-name{font-size:13px;color:var(--white);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-meta{font-size:10px;color:var(--muted)}
+.file-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:6px;flex-shrink:0}
+.file-del:hover,.file-del:active{color:var(--danger)}
+.file-chk{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px}
+.file-item.selected .file-chk{background:var(--accent2);border-color:var(--accent2);color:#000}
+.empty{text-align:center;padding:30px;color:var(--muted);font-size:12px;line-height:1.8}
+
+/* Upload progress */
+.up-progress{background:var(--s1);border:1px solid var(--accent);border-radius:8px;padding:14px;margin-bottom:16px;display:none}
+.up-progress.show{display:block}
+.up-progress-title{font-size:11px;color:var(--accent);margin-bottom:8px}
+.up-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.up-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width 0.3s;width:0%}
+.up-text{font-size:10px;color:var(--muted);margin-top:6px}
+
+/* Run panel */
+.run-panel{position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:2px solid var(--accent2);padding:16px 20px;z-index:200;transform:translateY(100%);transition:transform 0.3s ease}
+.run-panel.show{transform:translateY(0)}
+.run-inner{max-width:600px;margin:0 auto}
+.sel-file{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.sel-name{font-size:13px;color:var(--white)}
+.sel-lang{font-size:10px;color:var(--muted)}
+.run-btns{display:grid;grid-template-columns:1fr 2fr;gap:10px}
+.btn-cancel{padding:14px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;border-radius:6px;cursor:pointer}
+.btn-run{padding:14px;background:linear-gradient(135deg,rgba(0,255,136,0.2),rgba(0,229,255,0.1));border:1px solid var(--accent2);color:var(--accent2);font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:2px;border-radius:6px;cursor:pointer;transition:all 0.3s}
+.btn-run:active{transform:scale(0.98)}
+
+/* Deploy overlay */
+.progress-overlay{position:fixed;inset:0;background:rgba(3,7,10,0.96);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.progress-overlay.show{display:flex}
+.prog-title{font-family:'Orbitron',sans-serif;font-size:14px;color:var(--accent)}
+.prog-bar{width:280px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width 0.5s ease}
+.prog-steps{display:flex;flex-direction:column;gap:8px;width:300px}
+.psi{font-size:12px;display:flex;align-items:center;gap:8px;color:var(--muted)}
+.psi.done{color:var(--accent2)}.psi.active{color:var(--accent)}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.alert{padding:12px;border-radius:6px;font-size:12px;margin-bottom:12px;display:none}
+.alert.error{background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.3);color:var(--danger)}
+.alert.success{background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);color:var(--accent2)}
 </style>
 </head>
 <body>
 <div class="grid-bg"></div>
-<nav>
-  <a href="index.html" class="logo">TELE<span>HOST</span></a>
-  <a href="dashboard.html" class="back-btn">← DASHBOARD</a>
-</nav>
+<nav><a href="/" class="logo">TELE<span>HOST</span></a><a href="/dashboard.html" class="back">← DASHBOARD</a></nav>
 <div class="page">
   <div class="page-title">📁 File Manager</div>
-  <div class="page-sub">// Upload your bot script and run it</div>
-  <div class="upload-zone" id="uploadZone">
-    <input type="file" id="fileInput" accept=".py,.js" onchange="handleFile(this)">
-    <div class="upload-icon">📤</div>
-    <div class="upload-title">Tap to Upload Script</div>
-    <div class="upload-sub">Drag & drop or tap to select file</div>
-    <div class="upload-types">
-      <span class="type-badge py">🐍 .py Python</span>
-      <span class="type-badge js">⚡ .js Node.js</span>
+  <div class="page-sub">// Upload karo aur bot run karo</div>
+
+  <div class="alert" id="alert"></div>
+
+  <!-- Main upload button -->
+  <div class="upload-btn-wrap">
+    <label class="upload-btn">
+      <span class="upload-btn-icon">📂</span>
+      <span>FILES SELECT KARO</span>
+      <input type="file" id="fileInput" multiple onchange="handleFiles(this.files)">
+    </label>
+  </div>
+
+  <!-- ZIP upload -->
+  <label class="zip-btn">
+    <span style="font-size:20px">📦</span>
+    <span>PURA FOLDER ZIP KARKE UPLOAD KARO</span>
+    <input type="file" id="zipInput" accept=".zip" onchange="handleZip(this.files[0])">
+  </label>
+
+  <!-- Supported files -->
+  <div class="supported">
+    <div class="sup-title">SUPPORTED FILES</div>
+    <div class="sup-tags">
+      <span class="sup-tag py">🐍 bot.py</span>
+      <span class="sup-tag py">🐍 main.py</span>
+      <span class="sup-tag js">⚡ index.js</span>
+      <span class="sup-tag js">⚡ bot.js</span>
+      <span class="sup-tag sh">⚙️ start.sh</span>
+      <span class="sup-tag txt">📄 requirements.txt</span>
+      <span class="sup-tag txt">🐳 Dockerfile</span>
+      <span class="sup-tag any">✅ Koi bhi file</span>
     </div>
   </div>
-  <div class="section-title">UPLOADED FILES</div>
-  <div class="file-list" id="fileList"></div>
+
+  <!-- Upload progress -->
+  <div class="up-progress" id="upProgress">
+    <div class="up-progress-title">⬆️ UPLOADING...</div>
+    <div class="up-bar"><div class="up-fill" id="upFill"></div></div>
+    <div class="up-text" id="upText">Please wait...</div>
+  </div>
+
+  <div class="sec-title">UPLOADED FILES</div>
+  <div class="file-list" id="fileList"><div class="empty">Koi file nahi hai abhi.<br>Upar se upload karo! 👆</div></div>
 </div>
+
+<!-- Run panel -->
 <div class="run-panel" id="runPanel">
-  <div class="run-panel-inner">
-    <div class="selected-file">
-      <div style="font-size:20px" id="selIcon">🐍</div>
-      <div><div class="sel-name" id="selName">bot.py</div><div class="sel-lang" id="selLang">Python 3.11</div></div>
+  <div class="run-inner">
+    <div class="sel-file">
+      <div style="font-size:22px" id="selIcon">🐍</div>
+      <div><div class="sel-name" id="selName">bot.py</div><div class="sel-lang" id="selLang">Python script</div></div>
     </div>
-    <div class="run-actions">
+    <div class="run-btns">
       <button class="btn-cancel" onclick="deselect()">CANCEL</button>
       <button class="btn-run" onclick="runBot()">▶ RUN BOT</button>
     </div>
   </div>
 </div>
-<div class="progress-overlay" id="progressOverlay">
-  <div class="prog-title">DEPLOYING BOT</div>
-  <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
-  <div class="prog-steps" id="progSteps">
-    <div class="prog-item" id="step1">⬜ Uploading script...</div>
-    <div class="prog-item" id="step2">⬜ Detecting language...</div>
-    <div class="prog-item" id="step3">⬜ Installing dependencies...</div>
-    <div class="prog-item" id="step4">⬜ Starting bot...</div>
+
+<!-- Deploy overlay -->
+<div class="progress-overlay" id="po">
+  <div class="prog-title">🚀 DEPLOYING BOT</div>
+  <div class="prog-bar"><div class="prog-fill" id="pf" style="width:0%"></div></div>
+  <div class="prog-steps">
+    <div class="psi" id="ps1">⬜ Script upload ho raha hai...</div>
+    <div class="psi" id="ps2">⬜ Language detect ho rahi hai...</div>
+    <div class="psi" id="ps3">⬜ Dependencies install ho rahi hain...</div>
+    <div class="psi" id="ps4">⬜ Bot start ho raha hai...</div>
   </div>
 </div>
+
 <script>
-const session = JSON.parse(localStorage.getItem('telehost_session') || '{}');
-if (!session.loggedIn) window.location.href = 'login.html';
-let files = JSON.parse(localStorage.getItem('telehost_files_' + session.username) || '[]');
-let selectedFile = null;
+const token = localStorage.getItem('th_token');
+if (!token) window.location.href = '/login.html';
+
+let files = [], selectedFile = null;
+
+function getFileIcon(name) {
+  if (name.endsWith('.py')) return '🐍';
+  if (name.endsWith('.js')) return '⚡';
+  if (name.endsWith('.sh')) return '⚙️';
+  if (name.endsWith('.txt') || name.endsWith('.requirements')) return '📄';
+  if (name === 'Dockerfile') return '🐳';
+  if (name.endsWith('.json')) return '📋';
+  if (name.endsWith('.zip')) return '📦';
+  return '📄';
+}
+
+function getFileLang(name) {
+  if (name.endsWith('.py')) return 'Python Script';
+  if (name.endsWith('.js')) return 'Node.js Script';
+  if (name.endsWith('.sh')) return 'Shell Script';
+  if (name.endsWith('.txt')) return 'Text File';
+  if (name === 'Dockerfile') return 'Docker Config';
+  if (name.endsWith('.json')) return 'JSON Config';
+  return 'File';
+}
+
+async function apiFetch(url, opts = {}) {
+  const r = await fetch(url, {
+    ...opts,
+    headers: { 'Authorization': 'Bearer ' + token, ...(opts.headers || {}) }
+  });
+  return r.json();
+}
+
+async function loadFiles() {
+  const d = await apiFetch('/api/files');
+  files = d.files || [];
+  renderFiles();
+}
+
 function renderFiles() {
   const list = document.getElementById('fileList');
-  if (files.length === 0) { list.innerHTML = '<div class="empty-files">No files uploaded yet.<br>Upload your bot script above.</div>'; return; }
+  if (files.length === 0) {
+    list.innerHTML = '<div class="empty">Koi file nahi hai abhi.<br>Upar se upload karo! 👆</div>';
+    return;
+  }
   list.innerHTML = '';
   files.forEach((f, i) => {
-    const isPy = f.name.endsWith('.py');
     const div = document.createElement('div');
     div.className = 'file-item' + (selectedFile === i ? ' selected' : '');
-    div.innerHTML = '<div class="file-icon">' + (isPy ? '🐍' : '⚡') + '</div><div class="file-info"><div class="file-name">' + f.name + '</div><div class="file-meta">' + (isPy ? 'Python' : 'Node.js') + ' · ' + f.size + ' · ' + f.date + '</div></div><button class="file-del" onclick="delFile(event,' + i + ')">🗑</button><div class="file-check">' + (selectedFile === i ? '✓' : '') + '</div>';
-    div.onclick = () => selectFile(i);
+    div.innerHTML = `
+      <div class="file-icon">${getFileIcon(f.name)}</div>
+      <div class="file-info">
+        <div class="file-name">${f.name}</div>
+        <div class="file-meta">${f.lang || getFileLang(f.name)} · ${f.size} · ${f.date}</div>
+      </div>
+      <button class="file-del" onclick="delFile(event,'${f.name}',${i})">🗑</button>
+      <div class="file-chk">${selectedFile === i ? '✓' : ''}</div>
+    `;
+    div.onclick = (e) => { if (e.target.classList.contains('file-del')) return; selectFile(i, f); };
     list.appendChild(div);
   });
 }
-function delFile(e, i) {
-  e.stopPropagation();
-  files.splice(i, 1);
-  localStorage.setItem('telehost_files_' + session.username, JSON.stringify(files));
-  if (selectedFile === i) deselect();
-  else renderFiles();
-}
-function selectFile(i) {
+
+function selectFile(i, f) {
   selectedFile = i;
-  const f = files[i];
-  const isPy = f.name.endsWith('.py');
-  document.getElementById('selIcon').textContent = isPy ? '🐍' : '⚡';
+  document.getElementById('selIcon').textContent = getFileIcon(f.name);
   document.getElementById('selName').textContent = f.name;
-  document.getElementById('selLang').textContent = isPy ? 'Python 3.11' : 'Node.js 18';
+  document.getElementById('selLang').textContent = getFileLang(f.name);
   document.getElementById('runPanel').classList.add('show');
   renderFiles();
 }
+
 function deselect() {
   selectedFile = null;
   document.getElementById('runPanel').classList.remove('show');
   renderFiles();
 }
-function handleFile(input) {
-  const file = input.files[0];
-  if (!file) return;
-  if (!file.name.endsWith('.py') && !file.name.endsWith('.js')) { alert('Only .py and .js files allowed!'); return; }
-  const size = file.size < 1024 ? file.size + ' B' : Math.round(file.size/1024) + ' KB';
-  files.push({ name: file.name, size, date: new Date().toLocaleDateString() });
-  localStorage.setItem('telehost_files_' + session.username, JSON.stringify(files));
-  renderFiles();
+
+async function delFile(e, name, i) {
+  e.stopPropagation();
+  await apiFetch('/api/files/' + encodeURIComponent(name), { method: 'DELETE' });
+  if (selectedFile === i) deselect();
+  loadFiles();
 }
+
+function showAlert(msg, type = 'error') {
+  const el = document.getElementById('alert');
+  el.textContent = msg;
+  el.className = 'alert ' + type;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+
+async function handleFiles(fileList) {
+  if (!fileList || fileList.length === 0) return;
+  const prog = document.getElementById('upProgress');
+  const fill = document.getElementById('upFill');
+  const text = document.getElementById('upText');
+  prog.classList.add('show');
+
+  for (let i = 0; i < fileList.length; i++) {
+    const file = fileList[i];
+    text.textContent = `Uploading: ${file.name} (${i + 1}/${fileList.length})`;
+    fill.style.width = ((i / fileList.length) * 80) + '%';
+
+    const fd = new FormData();
+    fd.append('script', file);
+    try {
+      const r = await fetch('/api/files/upload', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: fd
+      });
+      const d = await r.json();
+      if (!d.success) showAlert('❌ ' + file.name + ' upload failed: ' + (d.error || ''));
+    } catch (err) {
+      showAlert('❌ Upload error: ' + err.message);
+    }
+  }
+
+  fill.style.width = '100%';
+  text.textContent = '✅ Upload complete!';
+  setTimeout(() => { prog.classList.remove('show'); fill.style.width = '0%'; }, 1500);
+  loadFiles();
+}
+
+async function handleZip(file) {
+  if (!file) return;
+  showAlert('📦 ZIP uploading... please wait', 'success');
+  const fd = new FormData();
+  fd.append('script', file);
+  try {
+    const r = await fetch('/api/files/upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: fd
+    });
+    const d = await r.json();
+    if (d.success) { showAlert('✅ ZIP uploaded!', 'success'); loadFiles(); }
+    else showAlert('❌ ' + (d.error || 'Upload failed'));
+  } catch (err) {
+    showAlert('❌ ' + err.message);
+  }
+}
+
 function setStep(id, state, txt) {
   const el = document.getElementById(id);
-  if (state === 'active') { el.className = 'prog-item active'; el.innerHTML = '<span class="spinner">⟳</span> ' + txt; }
-  else if (state === 'done') { el.className = 'prog-item done'; el.textContent = '✅ ' + txt; }
+  if (state === 'active') { el.className = 'psi active'; el.innerHTML = '<span class="spin">⟳</span> ' + txt; }
+  else if (state === 'done') { el.className = 'psi done'; el.textContent = '✅ ' + txt; }
 }
-function runBot() {
+
+async function runBot() {
   if (selectedFile === null) return;
   const f = files[selectedFile];
-  const isPy = f.name.endsWith('.py');
-  document.getElementById('progressOverlay').classList.add('show');
-  document.getElementById('progFill').style.width = '0%';
-  const steps = [['Uploading script...','25%'],['Detecting language: '+(isPy?'Python 3.11':'Node.js 18'),'50%'],['Installing dependencies...','75%'],['Starting bot...','100%']];
+  const overlay = document.getElementById('po');
+  const pf = document.getElementById('pf');
+  overlay.classList.add('show');
+  pf.style.width = '0%';
+
+  const steps = [
+    ['ps1', 'Script ready hai...', '25%'],
+    ['ps2', 'Language detect: ' + getFileLang(f.name), '50%'],
+    ['ps3', 'Dependencies install ho rahi hain...', '75%'],
+    ['ps4', 'Bot start ho raha hai...', '100%'],
+  ];
+
+  steps.forEach(([id]) => {
+    const el = document.getElementById(id);
+    el.className = 'psi';
+    el.textContent = '⬜ ' + steps[steps.findIndex(s => s[0] === id)][1];
+  });
+
   let i = 0;
-  const ids = ['step1','step2','step3','step4'];
-  ids.forEach((id,idx) => { document.getElementById(id).className='prog-item'; document.getElementById(id).textContent='⬜ '+steps[idx][0]; });
-  const iv = setInterval(() => {
-    if (i > 0) setStep(ids[i-1], 'done', steps[i-1][0]);
-    if (i < steps.length) { setStep(ids[i], 'active', steps[i][0]); document.getElementById('progFill').style.width = steps[i][1]; i++; }
-    else {
+  const iv = setInterval(async () => {
+    if (i > 0) setStep(steps[i - 1][0], 'done', steps[i - 1][1]);
+    if (i < steps.length) {
+      setStep(steps[i][0], 'active', steps[i][1]);
+      pf.style.width = steps[i][2];
+      i++;
+    } else {
       clearInterval(iv);
-      const botState = { running: true, filename: f.name, lang: isPy ? 'Python' : 'Node.js', ram: Math.floor(80+Math.random()*80), startTime: Date.now(), restarts: 0 };
-      localStorage.setItem('telehost_bot_' + session.username, JSON.stringify(botState));
-      setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
+      try {
+        await apiFetch('/api/bot/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: f.name })
+        });
+      } catch (e) {}
+      setTimeout(() => { window.location.href = '/dashboard.html'; }, 700);
     }
   }, 900);
 }
-renderFiles();
+
+// Drag & drop
+const page = document.querySelector('.page');
+page.addEventListener('dragover', e => e.preventDefault());
+page.addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+});
+
+loadFiles();
 </script>
 </body>
 </html>
