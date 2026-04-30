@@ -54,7 +54,7 @@ const runningBots = {}; // { botId: { process, userId, wsClients: Set } }
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname)));
 
 // Multer setup
 const storage = multer.diskStorage({
@@ -310,7 +310,7 @@ wss.on('connection', (ws, req) => {
 
 // Serve frontend for all other routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 server.listen(PORT, () => {
