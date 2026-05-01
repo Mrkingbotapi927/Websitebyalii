@@ -4,4 +4,7 @@ builder = "nixpacks"
 [deploy]
 startCommand = "npm start"
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+restartPolicyMaxRetries = 10
+
+[[deploy.volumeMounts]]
+mountPath = "/app/data"
