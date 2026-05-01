@@ -190,7 +190,9 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 
 <script>
 const token = localStorage.getItem('th_token');
-if (!token) window.location.href = '/login.html';
+if (!token) { window.location.href = '/login.html'; }
+// Auth check removed - token se kaam chalao
+let files = [], selectedFile = null;
 
 let files = [], selectedFile = null;
 
