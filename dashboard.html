@@ -281,9 +281,8 @@ function logout() {
 }
 
 // Init
-verifyToken().then(() => {
-  loadBot();
-  pollInterval = setInterval(loadBot, 10000);
+loadBot();
+pollInterval = setInterval(loadBot, 10000);
 });
 </script>
 </body>
